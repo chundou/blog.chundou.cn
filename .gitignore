@@ -39,3 +39,6 @@ build/
 # docker
 /docker/.data
 /docker/.docker
+
+# logs
+logs
