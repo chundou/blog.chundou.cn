@@ -1,0 +1,5 @@
+# App Dummy
+CREATE DATABASE IF NOT EXISTS `app_dummy` COLLATE 'utf8mb4_unicode_ci' ;
+GRANT ALL ON `app_dummy`.* TO 'default'@'%' ;
+
+FLUSH PRIVILEGES ;

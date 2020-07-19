@@ -1,0 +1,18 @@
+spring:
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      config:
+        enabled: true
+        acl-token:
+        data-key: data
+        prefix: config_center
+        default-context: chundou/blog.chundou.cn
+        name:
+        format: key_value
+        fail-fast: false
+        watch:
+          enabled: false
+          delay: 30000
+          wait-time: 60

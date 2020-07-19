@@ -1,0 +1,123 @@
+version: "3.7"
+services:
+  consul:
+    image: consul:latest
+    container_name: consul
+    restart: on-failure
+    command: agent -server -bootstrap-expect=1 -node=consul-server -bind=0.0.0.0 -client=0.0.0.0 -ui
+    environment:
+      - "CONSUL_LOCAL_CONFIG={\"disable_update_check\": true}"
+    volumes:
+      - ./.docker/consul/node:/consul/data
+    networks:
+      - cdbnetwork
+    ports:
+      - 8500:8500
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: on-failure
+    volumes:
+      - ./.docker/mysql/system:/var/lib/mysql
+      - ./.docker/mysql/root:/root
+      - ./.docker/mysql/log:/var/log/mysql
+      - ./config/mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: app_dummy
+      MYSQL_USER: default
+      MYSQL_PASSWORD: secret
+    networks:
+      - cdbnetwork
+    ports:
+      - 3306:3306
+  redis:
+    image: redis:latest
+    container_name: redis
+    command: redis-server /usr/local/etc/redis/redis.conf
+    restart: on-failure
+    volumes:
+      - ./.docker/redis:/data
+      - ./config/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - cdbnetwork
+    ports:
+      - 6379:6379
+  elasticsearch:
+    image: elasticsearch:7.8.0
+    container_name: elasticsearch
+    environment:
+      - node.name=es
+      - cluster.name=elasticsearch
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./.docker/elasticsearch/data:/usr/share/elasticsearch/data
+      - ./config/elasticsearch/plugins:/usr/share/elasticsearch/plugins
+    networks:
+      - cdbnetwork
+    ports:
+      - 9200:9200
+      - 9300:9300
+  kibana:
+    image: kibana:7.8.0
+    container_name: kibana
+    links:
+      - elasticsearch:es
+    depends_on:
+      - elasticsearch
+    environment:
+      - "elasticsearch.hosts=http://es:9200"
+      - TZ=Asia/Shanghai
+    networks:
+      - cdbnetwork
+    ports:
+      - 5601:5601
+  logstash:
+    image: logstash:7.8.0
+    container_name: logstash
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./config/logstash/logstash.conf:/usr/share/logstash/pipline/logstash.conf
+    depends_on:
+      - elasticsearch
+    links:
+      - elasticsearch:es
+    networks:
+      - cdbnetwork
+    ports:
+      - 4560:4560
+      - 4561:4561
+      - 4563:4562
+      - 4564:4563
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: zookeeper
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - cdbnetwork
+    ports:
+      - 2181:2181
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CLIENT_USER=kafka
+      - KAFKA_CLIENT_PASSWORD=secret
+    depends_on:
+      - zookeeper
+    networks:
+      - cdbnetwork
+    ports:
+      - 9092:9092
+networks:
+  cdbnetwork:
